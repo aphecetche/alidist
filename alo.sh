@@ -3,8 +3,8 @@ version: "%(commit_hash)s"
 tag: master
 requires:
   - AliRoot
-  - O2
   - RapidJSON
+  - boost
 build_requires:
   - CMake
 source: https://github.com/mrrtf/alo
@@ -33,6 +33,7 @@ cmake $SOURCEDIR \
     -DCMAKE_INSTALL_PREFIX="$INSTALLROOT" \
     -DALIROOT="$ALIROOT_ROOT" \
     -DROOTSYS="$ROOT_ROOT" \
+    ${BOOST_ROOT:+-DBOOST_ROOT=$BOOST_ROOT} \
     -DRAPIDJSON_INCLUDEDIR="$RAPIDJSON_ROOT/include" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
     ${CMAKE_BUILD_TYPE:+-DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE}
