@@ -2,6 +2,17 @@ package: ninja
 version: "fortran-%(short_hash)s"
 tag: "5cf291ec1439edffa3c93dde56128181bd5f4037"
 source: https://github.com/Kitware/ninja
+common_recipe: |
+        function nope {
+                echo "I'm a function of no use whatsoever"
+        }
+
+        function nopesquare {
+                echo "I'm a function of no use whatsoever"
+        }
+
+
+force_rebuild: true
 build_requires:
  - "GCC-Toolchain:(?!osx)"
 ---

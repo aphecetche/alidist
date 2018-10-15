@@ -25,10 +25,11 @@ prepend_path:
 common_recipe: |
   function build {
     cmake --build . -- ${JOBS:+-j$JOBS} install
-  };
+  }
+
   function install_modulefiles {
     mkdir -p $INSTALLROOT/etc/modulefiles && rsync -a --delete etc/modulefiles/ $INSTALLROOT/etc/modulefiles
-  };
+  }
   function install_compdb {
     # install the compilation database so that we can post-check the code
     cp ${BUILDDIR}/compile_commands.json ${INSTALLROOT}
@@ -42,7 +43,7 @@ common_recipe: |
       perl -p -i -e "s|$SOURCEDIR|$DEVEL_SOURCES|" compile_commands.json
       ln -sf $BUILDDIR/compile_commands.json $DEVEL_SOURCES/compile_commands.json
     fi
-  };
+  }
   function run_tests {
     if [[ $ALIBUILD_O2_TESTS ]]; then
       export O2_ROOT=$INSTALLROOT
@@ -51,7 +52,7 @@ common_recipe: |
       ctest -E test_Framework --output-on-failure ${JOBS+-j $JOBS}
       ctest -R test_Framework --output-on-failure
     fi
-  };
+  }
   function run_coverage {
     # Create code coverage information to be uploaded
     # by the calling driver to codecov.io or similar service
@@ -68,7 +69,7 @@ common_recipe: |
       perl -p -i -e "s|^[0-9]+/||g" coverage.info # Remove PR location path
       lcov --list coverage.info
     fi
-  };
+  }
 incremental_recipe: |
   unset DYLD_LIBRARY_PATH
   build
