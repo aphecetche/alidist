@@ -7,6 +7,8 @@ requires:
   - RapidJSON
 build_requires:
   - CMake
+  - flatbuffers
+  - ms_gsl
 source: https://github.com/mrrtf/alo
 common_recipe: |
   function build {
@@ -44,6 +46,7 @@ cmake $SOURCEDIR \
     -DROOTSYS="$ROOT_ROOT" \
     -DRAPIDJSON_INCLUDEDIR="$RAPIDJSON_ROOT/include" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DMS_GSL_INCLUDE_DIR=$MS_GSL_ROOT/include \
     ${CMAKE_BUILD_TYPE:+-DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE}
 
 build
@@ -60,12 +63,12 @@ proc ModulesHelp { } {
 set version $PKGVERSION-@@PKGREVISION@$PKGHASH@@
 module-whatis "ALICE Modulefile for $PKGNAME $PKGVERSION-@@PKGREVISION@$PKGHASH@@"
 # Dependencies
-module load BASE/1.0 O2/$O2_VERSION-$O2_REVISION
+module load BASE/1.0 AliRoot/$ALIROOT_VERSION-$ALIROOT_REVISION
 # Our environment
-setenv ALO_O2_ROOT \$::env(BASEDIR)/$PKGNAME/\$version
+setenv ALO_ALIROOT_ROOT \$::env(BASEDIR)/$PKGNAME/\$version
 
-prepend-path PATH \$::env(ALO_O2_ROOT)/bin
-prepend-path LD_LIBRARY_PATH \$::env(ALO_O2_ROOT)/lib
+prepend-path PATH \$::env(ALO_ALIROOT_ROOT)/bin
+prepend-path LD_LIBRARY_PATH \$::env(ALO_ALIROOT_ROOT)/lib
 EoF
 
 install_modulefiles
