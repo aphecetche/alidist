@@ -1,13 +1,13 @@
 package: CMake
 version: "%(tag_basename)s"
-tag: "v3.13.1"
+tag: "v3.14.5"
 source: https://github.com/Kitware/CMake
 build_requires:
  - "GCC-Toolchain:(?!osx)"
 prefer_system: .*
 prefer_system_check: |
   verge() { [[  "$1" = "`echo -e "$1\n$2" | sort -V | head -n1`" ]]; }
-  type cmake && verge 3.14.1 `cmake --version | sed -e 's/.* //' | cut -d. -f1,2,3`
+  type cmake && verge 3.15.1 `cmake --version | sed -e 's/.* //' | cut -d. -f1,2,3`
 ---
 #!/bin/bash -e
 
