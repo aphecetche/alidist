@@ -19,7 +19,11 @@ source: https://github.com/AliceO2Group/QualityControl
 prepend_path:
   ROOT_INCLUDE_PATH: "$QUALITYCONTROL_ROOT/include"
 incremental_recipe: |
-  cmake --build . -- ${JOBS:+-j$JOBS} install
+  if [[ $COVERAGE == "YES" ]]; then
+    ctest -S $WORK_DIR/../alidist/coverage.cmake
+  else
+    cmake --build . -- ${JOBS:+-j$JOBS} install
+  fi
   mkdir -p $INSTALLROOT/etc/modulefiles && rsync -a --delete etc/modulefiles/ $INSTALLROOT/etc/modulefiles
   cp ${BUILDDIR}/compile_commands.json ${INSTALLROOT}
   # Tests (but not the ones with label "manual" and only if ALIBUILD_O2_TESTS is set )
@@ -32,7 +36,7 @@ incremental_recipe: |
 #!/bin/bash -ex
 
 case $ARCHITECTURE in
-  osx*) [[ ! $BOOST_ROOT ]] && BOOST_ROOT=$(brew --prefix boost);;
+osx*) [[ ! $BOOST_ROOT ]] && BOOST_ROOT=$(brew --prefix boost) ;;
 esac
 
 # For the PR checkers (which sets ALIBUILD_O2_TESTS),
@@ -44,12 +48,15 @@ fi
 # Use ninja if in devel mode, ninja is found and DISABLE_NINJA is not 1
 if [[ ! $CMAKE_GENERATOR && $DISABLE_NINJA != 1 && $DEVEL_SOURCES != $SOURCEDIR ]]; then
   NINJA_BIN=ninja-build
-  type "$NINJA_BIN" &> /dev/null || NINJA_BIN=ninja
-  type "$NINJA_BIN" &> /dev/null || NINJA_BIN=
+  type "$NINJA_BIN" &>/dev/null || NINJA_BIN=ninja
+  type "$NINJA_BIN" &>/dev/null || NINJA_BIN=
   [[ $NINJA_BIN ]] && CMAKE_GENERATOR=Ninja || true
   unset NINJA_BIN
 fi
 
+if [[ $COVERAGE == "YES" ]]; then
+  ctest -S $WORK_DIR/../alidist/coverage.cmake
+else
 cmake $SOURCEDIR                                              \
       -DCMAKE_INSTALL_PREFIX=$INSTALLROOT                     \
       ${CMAKE_GENERATOR:+-G "$CMAKE_GENERATOR"}               \
@@ -66,9 +73,9 @@ cmake $SOURCEDIR                                              \
       ${CXXSTD:+-DCMAKE_CXX_STANDARD=$CXXSTD}                 \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-cp ${BUILDDIR}/compile_commands.json ${INSTALLROOT}
+  cmake --build . -- ${JOBS:+-j$JOBS} install
 
-cmake --build . -- ${JOBS:+-j$JOBS} install
+fi
 
 # Tests (but not the ones with label "manual" and only if ALIBUILD_O2_TESTS is set)
 if [[ $ALIBUILD_O2_TESTS ]]; then
@@ -79,7 +86,7 @@ fi
 
 # Modulefile
 mkdir -p etc/modulefiles
-cat > etc/modulefiles/$PKGNAME <<EoF
+cat >etc/modulefiles/$PKGNAME <<EoF
 #%Module1.0
 proc ModulesHelp { } {
   global version
@@ -111,23 +118,7 @@ EoF
 
 mkdir -p $INSTALLROOT/etc/modulefiles && rsync -a --delete etc/modulefiles/ $INSTALLROOT/etc/modulefiles
 
-# Create code coverage information to be uploaded
-# by the calling driver to codecov.io or similar service
-if [[ $CMAKE_BUILD_TYPE == COVERAGE ]]; then
-  rm -rf coverage.info
-  lcov --base-directory $SOURCEDIR --directory . --capture --output-file coverage.info
-  lcov --remove coverage.info '*/usr/*' --output-file coverage.info
-  lcov --remove coverage.info '*/boost/*' --output-file coverage.info
-  lcov --remove coverage.info '*/ROOT/*' --output-file coverage.info
-  lcov --remove coverage.info '*/FairRoot/*' --output-file coverage.info
-  lcov --remove coverage.info '*/G__*Dict*' --output-file coverage.info
-  perl -p -i -e "s|$SOURCEDIR||g" coverage.info # Remove the absolute path for sources
-  perl -p -i -e "s|$BUILDDIR||g" coverage.info # Remove the absolute path for generated files
-  perl -p -i -e "s|^[0-9]+/||g" coverage.info # Remove PR location path
-  lcov --list coverage.info
-fi
-
 # Add extra RPM dependencies
-cat > $INSTALLROOT/.rpm-extra-deps <<EOF
+cat >$INSTALLROOT/.rpm-extra-deps <<EOF
 glfw # because the build machine some times happen to have glfw installed. Then it is necessary to have it in the destination
 EOF
