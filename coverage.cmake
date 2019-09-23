@@ -27,7 +27,7 @@
 # Ensure we have a sourcedir to work with
 if(NOT SOURCEDIR)
   if(NOT DEFINED ENV{SOURCEDIR})
-    message(FATAL_ERROR "Should defined SOURCEDIR")
+    message(FATAL_ERROR "Should define SOURCEDIR")
   else()
     set(SOURCEDIR $ENV{SOURCEDIR})
   endif()
@@ -55,7 +55,7 @@ set(CTEST_BINARY_DIRECTORY .)
 set(CTEST_USE_LAUNCHERS 1)
 
 # Setup for coverage build
-set(ENV{CXXFLAGS} "--coverage")
+set(ENV{CXXFLAGS} "--coverage -g -O0")
 set(CTEST_COVERAGE_COMMAND "gcov")
 
 ctest_start("Continuous")
