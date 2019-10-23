@@ -1,14 +1,14 @@
 #
-# A script to build a project in asan mode
+# A script to build a project in msan mode
 #
-# This script (named asan.cmake) should be executed from a build tree (can
+# This script (named msan.cmake) should be executed from a build tree (can
 # be empty) :
 #
-# cmake -S asan.cmake -DSOURCEDIR=... [ -DCMAKE_GENERATOR=... ]
+# cmake -S msan.cmake -DSOURCEDIR=... [ -DCMAKE_GENERATOR=... ]
 #
 # or just
 #
-# cmake -S asan.cmake
+# cmake -S msan.cmake
 #
 # assuming the environment variable SOURCEDIR is defined.
 #
@@ -23,6 +23,13 @@
 #
 # Note : if both an env. variable XXX and a cmake variable (-DXXX) exist, the
 # cmake variable is used.
+#
+# Example usage (more complete) :
+#
+# mkdir build 
+# cd build
+# ctest -S msan.cmake -DSOURCEDIR=somepath/QualityControl -V -DCMAKE_GENERATOR=Ninja -DCTEST_PROJECT_NAME=QualityControl
+#
 
 # Ensure we have a sourcedir to work with
 if(NOT SOURCEDIR)
@@ -50,16 +57,15 @@ else()
 endif()
 
 # Set source and build directories
-#set(CTEST_PROJECT_NAME TOTO)
 set(CTEST_SOURCE_DIRECTORY ${SOURCEDIR})
 set(CTEST_BINARY_DIRECTORY .)
 set(CTEST_USE_LAUNCHERS 1)
 
-# Setup for asan build
-set(ENV{CXXFLAGS} "-fsanitize=address")
-set(ENV{LDFLAGS} "-fsanitize=address")
+# Setup for msan build
+set(ENV{CXXFLAGS} "-fsanitize=memory")
+set(ENV{LDFLAGS} "-fsanitize=memory")
 
-set(CTEST_MEMORYCHECK_TYPE "AddressSanitizer")
+set(CTEST_MEMORYCHECK_TYPE "MemorySanitizer")
 
 ctest_start("Continuous")
 ctest_configure()
@@ -69,6 +75,5 @@ if(ERR EQUAL -1)
   message(FATAL_ERROR "Build failed")
 endif()
 
-ctest_test()
 ctest_memcheck()
 
