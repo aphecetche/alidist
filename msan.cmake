@@ -59,7 +59,6 @@ endif()
 # Set source and build directories
 set(CTEST_SOURCE_DIRECTORY ${SOURCEDIR})
 set(CTEST_BINARY_DIRECTORY .)
-set(CTEST_USE_LAUNCHERS 1)
 
 # Setup for msan build
 set(ENV{CXXFLAGS} "-fsanitize=memory")

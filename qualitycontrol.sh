@@ -19,11 +19,7 @@ source: https://github.com/AliceO2Group/QualityControl
 prepend_path:
   ROOT_INCLUDE_PATH: "$QUALITYCONTROL_ROOT/include"
 incremental_recipe: |
-  if [[ $COVERAGE == "YES" ]]; then
-    ctest -S $WORK_DIR/../alidist/coverage.cmake
-  else
-    cmake --build . -- ${JOBS:+-j$JOBS} install
-  fi
+  cmake --build . -- ${JOBS:+-j$JOBS} install
   mkdir -p $INSTALLROOT/etc/modulefiles && rsync -a --delete etc/modulefiles/ $INSTALLROOT/etc/modulefiles
   cp ${BUILDDIR}/compile_commands.json ${INSTALLROOT}
   # Tests (but not the ones with label "manual" and only if ALIBUILD_O2_TESTS is set )
@@ -36,7 +32,7 @@ incremental_recipe: |
 #!/bin/bash -ex
 
 case $ARCHITECTURE in
-osx*) [[ ! $BOOST_ROOT ]] && BOOST_ROOT=$(brew --prefix boost) ;;
+  osx*) [[ ! $BOOST_ROOT ]] && BOOST_ROOT=$(brew --prefix boost);;
 esac
 
 # For the PR checkers (which sets ALIBUILD_O2_TESTS),
@@ -48,8 +44,8 @@ fi
 # Use ninja if in devel mode, ninja is found and DISABLE_NINJA is not 1
 if [[ ! $CMAKE_GENERATOR && $DISABLE_NINJA != 1 && $DEVEL_SOURCES != $SOURCEDIR ]]; then
   NINJA_BIN=ninja-build
-  type "$NINJA_BIN" &>/dev/null || NINJA_BIN=ninja
-  type "$NINJA_BIN" &>/dev/null || NINJA_BIN=
+  type "$NINJA_BIN" &> /dev/null || NINJA_BIN=ninja
+  type "$NINJA_BIN" &> /dev/null || NINJA_BIN=
   [[ $NINJA_BIN ]] && CMAKE_GENERATOR=Ninja || true
   unset NINJA_BIN
 fi
@@ -57,36 +53,36 @@ fi
 if [[ $COVERAGE == "YES" ]]; then
   ctest -S $WORK_DIR/../alidist/coverage.cmake
 else
-cmake $SOURCEDIR                                              \
-      -DCMAKE_INSTALL_PREFIX=$INSTALLROOT                     \
-      ${CMAKE_GENERATOR:+-G "$CMAKE_GENERATOR"}               \
-      -DBOOST_ROOT=$BOOST_ROOT                                \
-      -DCommon_ROOT=$COMMON_O2_ROOT                           \
-      -DConfiguration_ROOT=$CONFIGURATION_ROOT                \
-      ${LIBINFOLOGGER_REVISION:+-DInfoLogger_ROOT=$LIBINFOLOGGER_ROOT}                       \
-      -DO2_ROOT=$O2_ROOT                                      \
-      -DFAIRROOTPATH=$FAIRROOT_ROOT                           \
-      -DFairRoot_DIR=$FAIRROOT_ROOT                           \
-      -DMS_GSL_INCLUDE_DIR=$MS_GSL_ROOT/include               \
-      -DARROW_HOME=$ARROW_ROOT                                \
-      ${CONTROL_OCCPLUGIN_REVISION:+-DOcc_ROOT=$CONTROL_OCCPLUGIN_ROOT}                      \
-      ${CXXSTD:+-DCMAKE_CXX_STANDARD=$CXXSTD}                 \
-      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-
+  cmake $SOURCEDIR                                              \
+        -DCMAKE_INSTALL_PREFIX=$INSTALLROOT                     \
+        ${CMAKE_GENERATOR:+-G "$CMAKE_GENERATOR"}               \
+        -DBOOST_ROOT=$BOOST_ROOT                                \
+        -DCommon_ROOT=$COMMON_O2_ROOT                           \
+        -DConfiguration_ROOT=$CONFIGURATION_ROOT                \
+        ${LIBINFOLOGGER_REVISION:+-DInfoLogger_ROOT=$LIBINFOLOGGER_ROOT}                       \
+        -DO2_ROOT=$O2_ROOT                                      \
+        -DFAIRROOTPATH=$FAIRROOT_ROOT                           \
+        -DFairRoot_DIR=$FAIRROOT_ROOT                           \
+        -DMS_GSL_INCLUDE_DIR=$MS_GSL_ROOT/include               \
+        -DARROW_HOME=$ARROW_ROOT                                \
+        ${CONTROL_OCCPLUGIN_REVISION:+-DOcc_ROOT=$CONTROL_OCCPLUGIN_ROOT}                      \
+        ${CXXSTD:+-DCMAKE_CXX_STANDARD=$CXXSTD}                 \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  
+  cp ${BUILDDIR}/compile_commands.json ${INSTALLROOT}
   cmake --build . -- ${JOBS:+-j$JOBS} install
 
-fi
-
-# Tests (but not the ones with label "manual" and only if ALIBUILD_O2_TESTS is set)
-if [[ $ALIBUILD_O2_TESTS ]]; then
-  echo "Run the tests"
-  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$INSTALLROOT/lib
-  ctest --output-on-failure -LE manual -E "(testWorkflow|testCheckWorkflow)" ${JOBS+-j $JOBS}
+  # Tests (but not the ones with label "manual" and only if ALIBUILD_O2_TESTS is set)
+  if [[ $ALIBUILD_O2_TESTS ]]; then
+    echo "Run the tests"
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$INSTALLROOT/lib
+    ctest --output-on-failure -LE manual -E "(testWorkflow|testCheckWorkflow)" ${JOBS+-j $JOBS}
+  fi
 fi
 
 # Modulefile
 mkdir -p etc/modulefiles
-cat >etc/modulefiles/$PKGNAME <<EoF
+cat > etc/modulefiles/$PKGNAME <<EoF
 #%Module1.0
 proc ModulesHelp { } {
   global version
@@ -119,6 +115,6 @@ EoF
 mkdir -p $INSTALLROOT/etc/modulefiles && rsync -a --delete etc/modulefiles/ $INSTALLROOT/etc/modulefiles
 
 # Add extra RPM dependencies
-cat >$INSTALLROOT/.rpm-extra-deps <<EOF
+cat > $INSTALLROOT/.rpm-extra-deps <<EOF
 glfw # because the build machine some times happen to have glfw installed. Then it is necessary to have it in the destination
 EOF
