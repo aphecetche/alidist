@@ -1,29 +1,35 @@
 #
-# A script to build a project in asan mode
+#
+# A script to build a project in address sanitizing mode
 #
 # This script (named asan.cmake) should be executed from a build tree (can
 # be empty) :
 #
-# cmake -S asan.cmake -DSOURCEDIR=... [ -DCMAKE_GENERATOR=... ]
+# ctest -S asan.cmake -DSOURCEDIR=... [ -DCMAKE_GENERATOR=... ]
 #
 # or just
 #
-# cmake -S asan.cmake
+# ctest -S asan.cmake
 #
 # assuming the environment variable SOURCEDIR is defined.
 #
-# In any case :
+# In any case a correct _build_ environment must be defined first, and then :
 #
 # * SOURCEDIR should point to the source directory of the project
 #
 # * CMAKE_GENERATOR (optional) should be either an env. or cmake variable (using
 #   the -D syntax in that latter case) containing one of the valid generator
-#   name known by the cmake program you are using. If not defined, make is used
+#   name known by the cmake program you are using. If not defined, Ninja is used
 #
+# In aliBuild world, the easiest way to get a correct build env. is to do
+#
+# WORK_DIR=/path/to/sw/ && source $WORK_DIR/[PACKAGE]/latest/etc/profile.d/init.sh
+#
+# where [PACKAGE] is the package you are trying to get address sanitizing for.
 #
 # Note : if both an env. variable XXX and a cmake variable (-DXXX) exist, the
 # cmake variable is used.
-
+#
 # Ensure we have a sourcedir to work with
 if(NOT SOURCEDIR)
   if(NOT DEFINED ENV{SOURCEDIR})
@@ -56,10 +62,9 @@ set(CTEST_BINARY_DIRECTORY .)
 set(CTEST_USE_LAUNCHERS 1)
 
 # Setup for asan build
-set(ENV{CXXFLAGS} "-fsanitize=address")
-set(ENV{LDFLAGS} "-fsanitize=address")
+set(ENV{CXXFLAGS} "-fsanitize=undefined -g -fno-omit-frame-pointer -fno-sanitize=vptr")
+set(ENV{LDFLAGS} "-fsanitize=undefined -fno-sanitize=vptr")
 
-set(CTEST_MEMORYCHECK_TYPE "AddressSanitizer")
 
 ctest_start("Continuous")
 ctest_configure()
@@ -69,6 +74,12 @@ if(ERR EQUAL -1)
   message(FATAL_ERROR "Build failed")
 endif()
 
-ctest_test()
-ctest_memcheck()
+ctest_test(INCLUDE_LABEL mch INCLUDE UserLogic)
 
+# set(CTEST_MEMORYCHECK_TYPE "AddressSanitizer")
+#
+# ctest_memcheck(INCLUDE_LABEL mch INCLUDE UserLogic)
+
+set(CTEST_MEMORYCHECK_TYPE "UndefinedBehaviorSanitizer")
+
+ctest_memcheck(INCLUDE_LABEL mch INCLUDE UserLogic)
