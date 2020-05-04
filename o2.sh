@@ -25,13 +25,11 @@ build_requires:
   - googlebenchmark
   - cub
 source: https://github.com/AliceO2Group/AliceO2
-env:
-  VMCWORKDIR: "$O2_ROOT/share"
-prepend_path:
-  ROOT_INCLUDE_PATH: "$O2_ROOT/include:$O2_ROOT/include/GPU"
 incremental_recipe: |
   unset DYLD_LIBRARY_PATH
+  echo "TIME: Increment build start at $(date)"
   cmake --build . -- ${JOBS:+-j$JOBS} install
+  echo "TIME: Increment build end at $(date)"
   mkdir -p $INSTALLROOT/etc/modulefiles && rsync -a --delete etc/modulefiles/ $INSTALLROOT/etc/modulefiles
   # install the compilation database so that we can post-check the code
   cp ${BUILDDIR}/compile_commands.json ${INSTALLROOT}
@@ -47,21 +45,16 @@ incremental_recipe: |
     ln -sf $BUILDDIR/compile_commands.json $DEVEL_SOURCES/compile_commands.json
   fi
   if [[ $ALIBUILD_O2_TESTS ]]; then
-    export O2_ROOT=$INSTALLROOT
-    export VMCWORKDIR=$O2_ROOT/share
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$O2_ROOT/lib
-    if [[ ! $BOOST_VERSION && $ARCHITECTURE == osx* ]]; then
-      export ROOT_INCLUDE_PATH=$(brew --prefix boost)/include:$ROOT_INCLUDE_PATH
-    fi
-    export ROOT_INCLUDE_PATH=$INSTALLROOT/include:$INSTALLROOT/include/GPU:$ROOT_INCLUDE_PATH
     # Clean up old coverage data and tests logs
     find . -name "*.gcov" -o -name "*.gcda" -delete
     # cleanup ROOT files created by tests in build area
     find $PWD -name "*.root" -delete
     rm -rf test_logs
     TESTERR=
+    echo "TIME: Increment ctest start at $(date)"
     ctest -E "(test_Framework)|(test_GPUsort(CUDA|HIP))" --output-on-failure ${JOBS+-j $JOBS} || TESTERR=$?
-    ctest -R test_Framework --output-on-failure || TESTERR=$?
+    ctest -R test_Framework -LE benchmark --output-on-failure || TESTERR=$?
+    echo "TIME: Increment ctest end at $(date)"
     # Display additional logs for tests that timed out in a non-fatal way
     set +x
     for LOG in test_logs/*.nonfatal; do
@@ -96,13 +89,13 @@ valid_defaults:
   - o2-prod
 ---
 #!/bin/sh
-export ROOTSYS=$ROOT_ROOT
 
 # Making sure people do not have SIMPATH set when they build fairroot.
 # Unfortunately SIMPATH seems to be hardcoded in a bunch of places in
 # fairroot, so this really should be cleaned up in FairRoot itself for
 # maximum safety.
 unset SIMPATH
+
 
 case $ARCHITECTURE in
   osx*)
@@ -140,6 +133,8 @@ if [[ ! $CMAKE_GENERATOR && $DISABLE_NINJA != 1 && $DEVEL_SOURCES != $SOURCEDIR 
 fi
 
 unset DYLD_LIBRARY_PATH
+
+echo "TIME: full build start at $(date)"
 cmake $SOURCEDIR -DCMAKE_INSTALL_PREFIX=$INSTALLROOT                                                      \
       ${CMAKE_GENERATOR:+-G "$CMAKE_GENERATOR"}                                                           \
       ${CMAKE_BUILD_TYPE:+-DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE}                                           \
@@ -152,6 +147,7 @@ cmake $SOURCEDIR -DCMAKE_INSTALL_PREFIX=$INSTALLROOT                            
       ${CURL_ROOT:+-DCURL_ROOT=$CURL_ROOT}
 
 cmake --build . -- ${JOBS+-j $JOBS} install
+echo "TIME: full build end at $(date)"
 
 # install the compilation database so that we can post-check the code
 cp compile_commands.json ${INSTALLROOT}
@@ -209,21 +205,16 @@ EoF
 mkdir -p $INSTALLROOT/etc/modulefiles && rsync -a --delete etc/modulefiles/ $INSTALLROOT/etc/modulefiles
 
 if [[ $ALIBUILD_O2_TESTS ]]; then
-  export O2_ROOT=$INSTALLROOT
-  export VMCWORKDIR=$O2_ROOT/share
-  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$O2_ROOT/lib
-  if [[ ! $BOOST_VERSION && $ARCHITECTURE == osx* ]]; then
-    export ROOT_INCLUDE_PATH=$(brew --prefix boost)/include:$ROOT_INCLUDE_PATH
-  fi
-  export ROOT_INCLUDE_PATH=$INSTALLROOT/include:$INSTALLROOT/include/GPU:$ROOT_INCLUDE_PATH
   # Clean up old coverage data and tests logs
   find . -name "*.gcov" -o -name "*.gcda" -delete
   rm -rf test_logs
   # Clean up ROOT files created by tests in build area
   find $PWD -name "*.root" -delete
   TESTERR=
+  echo "TIME: ctest start at $(date)"
   ctest -E "(test_Framework)|(test_GPUsort(CUDA|HIP))" --output-on-failure ${JOBS+-j $JOBS} || TESTERR=$?
-  ctest -R test_Framework --output-on-failure || TESTERR=$?
+  ctest -R test_Framework -LE benchmark --output-on-failure || TESTERR=$?
+  echo "TIME: ctest end at $(date)"
   # Display additional logs for tests that timed out in a non-fatal way
   set +x
   for LOG in test_logs/*.nonfatal; do
@@ -251,3 +242,4 @@ if [[ $CMAKE_BUILD_TYPE == COVERAGE ]]; then
   perl -p -i -e "s|^[0-9]+/||g" coverage.info # Remove PR location path
   lcov --list coverage.info
 fi
+
