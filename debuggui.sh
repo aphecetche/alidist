@@ -13,19 +13,27 @@ build_requires:
 source: https://github.com/AliceO2Group/DebugGUI
 ---
 
+PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:$(for p in $(echo $LD_LIBRARY_PATH | tr ":" "\n"); do echo $p/pkgconfig; done     | tr "\n" ":")
+
 case $ARCHITECTURE in
     osx*)
       [[ ! $GLFW_ROOT ]] && GLFW_ROOT=`brew --prefix glfw`
       [[ ! $LIBUV_ROOT ]] && LIBUV_ROOT=`brew --prefix libuv`
       [[ ! $FREETYPE_ROOT ]] && FREETYPE_ROOT=`brew --prefix freetype`
       EXTRA_LIBS="-framework CoreFoundation -framework AppKit"
+      LIBS="-L$CAPSTONE_ROOT/lib -L$GLFW_ROOT/lib -L$FREETYPE_ROOT/lib -lglfw3 -lfreetype2 -lcapstone -lpthread -ldl $EXTRA_LIBS" \
       DEFINES="-DNO_PARALLEL_SORT"
     ;;
     *) 
       DEFINES="-DIMGUI_IMPL_OPENGL_LOADER_GL3W -DTRACY_NO_FILESELECTOR"
-      EXTRA_LIBS="-lGL"
-      ! ld -ltbb -o /dev/null 2>/dev/null || EXTRA_LIBS="${EXTRA_LIBS} -ltbb"
+      # EXTRA_LIBS="-lGL"
+      # ! ld -ltbb -o /dev/null 2>/dev/null || EXTRA_LIBS="${EXTRA_LIBS} -ltbb"
+      [[ ! $FREETYPE_ROOT ]] && pkg-config --variable=prefix freetype2 && FREETYPE_ROOT=$(pkg-config --variable=prefix freetype2)
       [[ ! $FREETYPE_ROOT ]] && FREETYPE_ROOT="/usr"       
+      [[ ! $GLFW_ROOT ]] && pkg-config --variable=prefix glfw3 && GLFW_ROOT=$(pkg-config --variable=prefix glfw3)
+      [[ ! $CAPSTONE_ROOT ]] && pkg-config --variable=prefix capstone && CAPSTONE_ROOT=$(pkg-config --variable=prefix capstone)
+      LIBS=$(pkg-config --libs capstone glfw3 freetype2 x11 gl)
+      LIBS="$LIBS -ldl -lpthread -ltbb"
     ;;
 esac
 
@@ -41,11 +49,10 @@ fi
 # build the tracy profiler
 rsync -av $SOURCEDIR/tracy/ tracy/
 pushd tracy/profiler/build/unix
-  make                                                                                                                          \
-      LIBS="-L$CAPSTONE_ROOT/lib -L$GLFW_ROOT/lib -L$FREETYPE_ROOT/lib -lglfw -lfreetype -lcapstone -lpthread -ldl $EXTRA_LIBS" \
-      DEFINES="$DEFINES"                                                                                                        \
-      TBB=off                                                                                                                   \
-      INCLUDES="-I$CAPSTONE_ROOT/include -I$SOURCEDIR/tracy/imgui -I$SOURCEDIR/tracy -I$SOURCEDIR/tracy/profiler/libs/gl3w ${FREETYPE_ROOT:+-I$FREETYPE_ROOT/include/freetype2} -I${GLFW_ROOT:+$GLFW_ROOT/include}"
+  make \
+    LIBS="$LIBS" \
+    DEFINES="$DEFINES" \
+    INCLUDES="-I$CAPSTONE_ROOT/include -I$SOURCEDIR/tracy/imgui -I$SOURCEDIR/tracy -I$SOURCEDIR/tracy/profiler/libs/gl3w ${FREETYPE_ROOT:+-I$FREETYPE_ROOT/include/freetype2} -I${GLFW_ROOT:+$GLFW_ROOT/include}"
 popd
 mkdir -p $INSTALLROOT/{include/tracy,bin}
 cp tracy/profiler/build/unix/Tracy-debug $INSTALLROOT/bin/tracy-profiler
