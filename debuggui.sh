@@ -53,7 +53,13 @@ case $ARCHITECTURE in
       else
         EXTRA_LIBS="-lGL"
       fi
-      ! ld -ltbb -o /dev/null 2>/dev/null || EXTRA_LIBS="${EXTRA_LIBS} -ltbb"
+      ! ld -ltbb -o /dev/null 2>/dev/null || EXTRA_LIBS="${EXTRA_LIBS} -ltbb" 
+      if command -v spack; then
+        # try to get tbb from spack
+        if spack find intel-tbb &> /dev/null; then
+          EXTRA_LIBS="${EXTRA_LIBS} -L$(spack find --format \"{prefix}\" intel-tbb)/lib -ltbb"
+        fi
+      fi
     ;;
 esac
 
