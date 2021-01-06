@@ -13,29 +13,51 @@ build_requires:
 source: https://github.com/AliceO2Group/DebugGUI
 ---
 
-PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:$(for p in $(echo $LD_LIBRARY_PATH | tr ":" "\n"); do echo $p/pkgconfig; done     | tr "\n" ":")
+function assertPackage() {
+  rootvar=$1_ROOT
+  pkgname=$2
+  libname=${3:-$pkgname}
+  b=$(eval echo \$$rootvar)
+  if [[ ! -d "$b" ]]; then
+    # rootvar is not a valid path or is empty, try to find one using either
+    # brew or pkg-config
+    if command -v brew &> /dev/null; then
+      pre=$(brew --prefix $pkgname 2> /dev/null)
+      [[ -d "$pre" ]] && eval $rootvar=$pre && LIBS="$LIBS -L$pre/lib -l$libname"
+      echo "LIBS=$LIBS"
+    elif command -v pkg-config &> /dev/null; then
+      if [[ ! -d "$b" ]]; then
+        eval $rootvar=$(pkg-config --variable=prefix $pkgname 2> /dev/null) && LIBS="$LIBS $(pkg-config --libs $pkgname 2> /dev/null)"
+      fi
+    fi
+    else
+      # rootvar is valid, use it simply
+      LIBS="$LIBS -L$b/lib -l$libname"
+  fi
+}
+
+assertPackage GLFW glfw3 glfw
+assertPackage LIBUV libuv uv
+assertPackage FREETYPE freetype2 freetype
+assertPackage CAPSTONE capstone
 
 case $ARCHITECTURE in
     osx*)
-      [[ ! $GLFW_ROOT ]] && GLFW_ROOT=`brew --prefix glfw`
-      [[ ! $LIBUV_ROOT ]] && LIBUV_ROOT=`brew --prefix libuv`
-      [[ ! $FREETYPE_ROOT ]] && FREETYPE_ROOT=`brew --prefix freetype`
       EXTRA_LIBS="-framework CoreFoundation -framework AppKit"
-      LIBS="-L$CAPSTONE_ROOT/lib -L$GLFW_ROOT/lib -L$FREETYPE_ROOT/lib -lglfw3 -lfreetype2 -lcapstone -lpthread -ldl $EXTRA_LIBS" \
       DEFINES="-DNO_PARALLEL_SORT"
     ;;
     *) 
       DEFINES="-DIMGUI_IMPL_OPENGL_LOADER_GL3W -DTRACY_NO_FILESELECTOR"
-      # EXTRA_LIBS="-lGL"
-      # ! ld -ltbb -o /dev/null 2>/dev/null || EXTRA_LIBS="${EXTRA_LIBS} -ltbb"
-      [[ ! $FREETYPE_ROOT ]] && pkg-config --variable=prefix freetype2 && FREETYPE_ROOT=$(pkg-config --variable=prefix freetype2)
-      [[ ! $FREETYPE_ROOT ]] && FREETYPE_ROOT="/usr"       
-      [[ ! $GLFW_ROOT ]] && pkg-config --variable=prefix glfw3 && GLFW_ROOT=$(pkg-config --variable=prefix glfw3)
-      [[ ! $CAPSTONE_ROOT ]] && pkg-config --variable=prefix capstone && CAPSTONE_ROOT=$(pkg-config --variable=prefix capstone)
-      LIBS=$(pkg-config --libs capstone glfw3 freetype2 x11 gl)
-      LIBS="$LIBS -ldl -lpthread -ltbb"
+      if command -v pkg-config &> /dev/null; then
+        EXTRA_LIBS=$(pkg-config --libs x11 gl)
+      else
+        EXTRA_LIBS="-lGL"
+      fi
+      ! ld -ltbb -o /dev/null 2>/dev/null || EXTRA_LIBS="${EXTRA_LIBS} -ltbb"
     ;;
 esac
+
+LIBS="$LIBS $EXTRA_LIBS -ldl -lpthread"
 
 # Use ninja if in devel mode, ninja is found and DISABLE_NINJA is not 1
 if [[ ! $CMAKE_GENERATOR && $DISABLE_NINJA != 1 && $DEVEL_SOURCES != $SOURCEDIR ]]; then
