@@ -7,7 +7,7 @@ build_requires:
  - autotools
 prefer_system: .*
 prefer_system_check: |
-  PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:$(for p in $(echo $LD_LIBRARY_PATH | tr ":" "\n"); do echo $p/pkgconfig; done | tr "\n" ":") pkg-config --libs uuid 
+  pkg-config --exists uuid 
   if [ $? -ne 0 ]; then printf "libuuid not found\n"; exit 1; fi
 ---
 rsync -av --delete --exclude "**/.git" $SOURCEDIR/ .
