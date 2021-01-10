@@ -15,7 +15,7 @@ build_requires:
 ---
 #!/bin/bash -e
 [[ -e $SOURCEDIR/bindings ]] && XROOTD_V4=True && XROOTD_PYTHON=True || XROOTD_PYTHON=False
-PYTHON_EXECUTABLE=$( $(realpath $(which python3)) -c 'import sys; print(sys.executable)')
+PYTHON_EXECUTABLE=$(python3 -c 'import distutils.sysconfig; print(distutils.sysconfig.get_config_var("exec_prefix"));')/bin/python3
 
 case $ARCHITECTURE in
   osx*)
